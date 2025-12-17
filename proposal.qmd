@@ -1,8 +1,8 @@
 ---
-title: "Proposal title"
+title: "Predictive Maintenance"
 subtitle: "Proposal"
 author: 
-  - name: "Team Name - Todd Daily, Team member 2,..."
+  - name: "Team 6 - Todd Daily"
     affiliations:
       - name: "College of Information Science, University of Arizona"
 description: "Using machine learning to predict maintenance needs and detect early warning signs of failure in industrial equipment."
@@ -27,41 +27,23 @@ import pandas as pd
 ```
 
 ## Dataset
+
 ```{python}
-#| label: load-dataset
+data_path = "../data/ai4i2020.csv"
 #| message: false
 ```
-data = pd.read_csv("data/ai4i2020.csv")
 
-A brief description of your dataset including its provenance, dimensions, etc. as well as the reason why you chose this dataset.
-
-The dataset comes from the UCI Machine Learning Repository and is called the AI4I 2020 Predictive Maintenance Dataset. 
-It contains ten thousand rows and thirteen different columns about machine information related to the machine's condition, as well as sensor data.  
-We chose this data set because it was the only one we could find that was as comprehensive as well as being simulated. We thought it would be fun to see what conclusions we could come to.   
-
-Make sure to load the data and use inline code for some of this information.
+The dataset comes from the UCI Machine Learning Repository and is called the AI4I 2020 Predictive Maintenance Dataset. It contains ten thousand rows and thirteen different columns about machine information related to the machine's condition, as well as sensor data.\
+I chose this data set because it was the only one we could find that was as comprehensive as well as being simulated. We thought it would be fun to see what conclusions we could come to.
 
 ## Questions
 
 The two questions you want to answer.
-1. The first question we want to know is what features are linked strongly to machine failures, such as temperature, torque, and tool wear.  
 
-2. The second question we have is whether we can predict when a machine will fail based on the data.
+1.  The first question we want to know is what features are linked strongly to machine failures, such as temperature, torque, and tool wear.
+
+2.  The second question we have is whether we can predict when a machine will fail based on the data.
 
 ## Analysis plan
 
--   A plan for answering each of the questions, including the variables involved, variables to be created (if any), and external data to be merged in (if any). 
-Variable	Meaning
-UDI: Unique identifier for each record 
-Product ID	Specific machine model
-Type	Load type (L = Light, M = Medium, H = Heavy)
-Air temperature [K]	Ambient temperature near the equipment
-Process temperature [K]	Temperature of process fluid
-Rotational speed [rpm]	Shaft rotation speed
-Torque [Nm]	Rotational force applied
-Tool wear [min]	Usage time of the tool in minutes
-Machine failure	Target label (1 = failure, 0 = normal)
-TWF, HDF, PWF, OSF, RNF	Specific failure categories: Tool Wear, Heat Dissipation, Power, Overstrain, Random
-At this time, we can not think of any other features we might need, but we are open to creating features and likly will. 
-For the first question, we plan on doing some EDA, something similar to what we did in the homework, by examining the features and seeing if any are highly correlated. Then, plot the information using boxplots and histograms. 
-For question two, we wanted to use different models to figure out which ones are best, something like Logistic regression or KNN. We also wanted to possibly try XGBoost and an LSTM. Finally, evaluate everything using a ROC-AUC, accuracy, and precision and recall
+-   A plan for answering each of the questions, including the variables involved, variables to be created (if any), and external data to be merged in (if any). Variable Meaning UDI: Unique identifier for each record Product ID Specific machine model Type Load type (L = Light, M = Medium, H = Heavy) Air temperature \[K\] Ambient temperature near the equipment Process temperature \[K\] Temperature of process fluid Rotational speed \[rpm\] Shaft rotation speed Torque \[Nm\] Rotational force applied Tool wear \[min\] Usage time of the tool in minutes Machine failure Target label (1 = failure, 0 = normal) TWF, HDF, PWF, OSF, RNF Specific failure categories: Tool Wear, Heat Dissipation, Power, Overstrain, Random At this time, we can not think of any other features we might need, but we are open to creating features and likely will. For the first question, we plan on doing some EDA, something similar to what we did in the homework, by examining the features and seeing if any are highly correlated. Then, plot the information using boxplots and histograms. For question two, we wanted to use different models to figure out which ones are best, something like Logistic regression or KNN. We also wanted to possibly try XGBoost and an LSTM. Finally, evaluate everything using a ROC-AUC, accuracy, and precision and recall.

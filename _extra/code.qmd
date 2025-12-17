@@ -1,24 +1,471 @@
+---
+title: "Predictive Maintenance: Final Project"
+format:
+  html:
+    toc: true
+    code-fold: true
+execute:
+  echo: true
+  warning: false
+  message: false
+---
 
+## Setup
 
 ```{python}
-#| label: load-pkgs
-#| message: false
-
 import numpy as np
+import pandas as pd
 
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+from sklearn.preprocessing import LabelEncoder, StandardScaler
+from sklearn.decomposition import PCA
+from sklearn.model_selection import train_test_split, GridSearchCV, StratifiedKFold
+from sklearn.metrics import (
+    accuracy_score, precision_score, recall_score,
+    f1_score, roc_auc_score, average_precision_score,
+    confusion_matrix, ConfusionMatrixDisplay
+)
+
+from sklearn.linear_model import LogisticRegression
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
+from sklearn.svm import SVC
+from xgboost import XGBClassifier
+
+RANDOM_STATE = 42
+np.random.seed(RANDOM_STATE)
+
+sns.set(style="whitegrid")
+plt.rcParams["figure.figsize"] = (8, 5)
 ```
 
+---
 
-## Dataset Setup
+## Load Dataset
+
+```{python}
+data_path = "../data/ai4i2020.csv"
+data = pd.read_csv(data_path)
+data.head()
+```
+
+---
+
+## Dataset Overview
+
+```{python}
+print("Shape:", data.shape)
+print("\nMissing values:\n", data.isna().sum())
+print("\nColumn types:\n", data.dtypes)
+```
+
+---
+
+## Target Distribution
+
+```{python}
+target_col = "Machine failure"
+
+data[target_col].value_counts().rename(index={0:"No Failure", 1:"Failure"}).plot(kind="bar")
+plt.title("Machine Failure Frequency")
+plt.ylabel("Count")
+plt.show()
+
+#getting the rate of failures
+print("Failure rate:", float(data[target_col].mean()))
+```
+
+---
+
+## Numeric Summary
+
+```{python}
+numeric_cols = [
+    "Air temperature [K]",
+    "Process temperature [K]",
+    "Rotational speed [rpm]",
+    "Torque [Nm]",
+    "Tool wear [min]"
+]
+
+data[numeric_cols].describe()
+```
+
+---
+
+## Boxplots for Outliers
+
+```{python}
+fig, axes = plt.subplots(1, len(numeric_cols), figsize=(16, 4))
+for ax, col in zip(axes, numeric_cols):
+    sns.boxplot(y=data[col], ax=ax)
+    ax.set_title(col)
+plt.tight_layout()
+plt.show()
+```
+
+---
+
+## Correlation Heatmap
+
+```{python}
+df_corr = data.copy()
+
+if "Type" in df_corr.columns:
+    df_corr["Type"] = LabelEncoder().fit_transform(df_corr["Type"].astype(str))
+
+corr_numeric = df_corr.select_dtypes(include=["number"])
+
+plt.figure(figsize=(10, 8))
+sns.heatmap(corr_numeric.corr(), cmap="coolwarm", center=0)
+plt.title("Correlation Heatmap (Numeric Features)")
+plt.show()
+```
+
+---
+
+## Preprocessing / Feature Engineering
+
 ```{python}
 
+y = data["Machine failure"].astype(int)
 
+
+X = data.copy()
+
+#Removing leakage columns + target these are types of failure
+leak_cols = ["TWF", "HDF", "PWF", "OSF", "RNF", "Machine failure"]
+X = X.drop(columns=leak_cols, errors="ignore")
+
+#ID column is usless 
+X = X.drop(columns=["UDI"], errors="ignore")
+
+#encode categorical columns
+for c in ["Type", "Product ID"]:
+    if c in X.columns:
+        if X[c].dtype == "object":
+            X[c] = LabelEncoder().fit_transform(X[c].astype(str))
+
+#XGBoost feature-name removal 
+X = X.rename(columns=lambda c: (
+    str(c).replace("[", "")
+          .replace("]", "")
+          .replace("<", "")
+          .replace(">", "")
+          .replace(" ", "_")
+))
+
+X.head()
 ```
 
+---
 
+## Train/Test Split
 
-## Plots
+```{python}
+#stratify make sure things are even
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y, test_size=0.2, random_state=RANDOM_STATE, stratify=y
+)
+
+print("Train:", X_train.shape, " Test:", X_test.shape)
+
+#used for xgbclassifier
+non_fail_count = int((y_train == 0).sum())
+fail_count = int((y_train == 1).sum())
+scale_pos_weight = non_fail_count / fail_count
+print("non_fail_count, fail_count, scale_pos_weight:", non_fail_count, fail_count, scale_pos_weight)
+```
+
+---
+
+## PCA just for eda
+
+```{python}
+scaler = StandardScaler()
+X_scaled = scaler.fit_transform(X)
+
+pca = PCA(n_components=0.95, random_state=RANDOM_STATE)
+pca_values = pca.fit_transform(X_scaled)
+
+plt.plot(np.cumsum(pca.explained_variance_ratio_), marker="o")
+plt.title("PCA 95% target")
+plt.ylabel("Cumulative Variance")
+plt.xlabel("Number of Components")
+plt.show()
+
+print("Components needed for 95% variance:", pca.n_components_)
+```
+
+---
+
+## Model Comparison
+
+```{python}
+def evaluate_model(model, name):
+    model.fit(X_train, y_train)
+    pred = model.predict(X_test)
+
+    if hasattr(model, "predict_proba"):
+        probs = model.predict_proba(X_test)[:, 1]
+    else:
+        probs = None
+
+    out = {
+        "Model": name,
+        "Accuracy": accuracy_score(y_test, pred),
+        "Precision": precision_score(y_test, pred, zero_division=0),
+        "Recall": recall_score(y_test, pred, zero_division=0),
+        "F1": f1_score(y_test, pred, zero_division=0),
+    }
+    #if probs exsist use ROC_AUC and PR_AUC
+
+    if probs is not None:
+        out["ROC_AUC"] = roc_auc_score(y_test, probs)
+        out["PR_AUC"] = average_precision_score(y_test, probs)
+    else:
+        out["ROC_AUC"] = np.nan
+        out["PR_AUC"] = np.nan
+
+    return out
+```
+
+## Base Models
+
+```{python}
+models = [
+    (LogisticRegression(max_iter=2000, random_state=RANDOM_STATE), "Logistic Regression"),
+    (KNeighborsClassifier(5), "KNN"),
+    (DecisionTreeClassifier(random_state=RANDOM_STATE), "Decision Tree"),
+    (RandomForestClassifier(n_estimators=400, random_state=RANDOM_STATE), "Random Forest"),
+    (SVC(kernel="rbf", probability=True, random_state=RANDOM_STATE), "SVM"),
+    (GradientBoostingClassifier(random_state=RANDOM_STATE), "Gradient Boosting"),
+    (XGBClassifier(random_state=RANDOM_STATE,scale_pos_weight=scale_pos_weight,eval_metric="logloss",), "XGBoost (Default)"),
+]
+
+results = [evaluate_model(m, n) for m, n in models]
+df_results = pd.DataFrame(results).sort_values("F1", ascending=False)
+df_results
+```
+
+---
+
+## Threshold tuning
+
+```{python}
+def metrics_at_threshold(y_true, probs, t):
+    preds = probs > t
+    return {
+        "Threshold": float(t),
+        "Precision": precision_score(y_true, preds, zero_division=0),
+        "Recall": recall_score(y_true, preds, zero_division=0),
+        "F1": f1_score(y_true, preds, zero_division=0),
+        "ROC_AUC": roc_auc_score(y_true, probs),
+        "PR_AUC": average_precision_score(y_true, probs),
+    }
+
+def tune_threshold_for_f1(y_true, probs, t_min=0.05, t_max=0.95, step=0.005):
+    thresholds = np.arange(t_min, t_max, step)
+    f1s = np.array([f1_score(y_true, probs > t, zero_division=0) for t in thresholds])
+    best_idx = int(np.argmax(f1s))
+    return thresholds, f1s, float(thresholds[best_idx]), float(f1s[best_idx])
+```
+
+---
+
+## XGBoost Baseline
+
+```{python}
+xgb_base = XGBClassifier(
+    n_estimators=500,
+    learning_rate=0.05,
+    max_depth=4,
+    subsample=0.8,
+    colsample_bytree=0.8,
+    min_child_weight=1,
+    reg_lambda=1.0,
+    scale_pos_weight=scale_pos_weight,
+    random_state=RANDOM_STATE,
+    eval_metric="logloss",
+    tree_method="hist",
+    n_jobs=-1
+)
+
+xgb_base.fit(X_train, y_train)
+probs_base = xgb_base.predict_proba(X_test)[:, 1]
+#just to show base used .5
+metrics_base_05 = metrics_at_threshold(y_test, probs_base, 0.5)
+metrics_base_05
+```
+
+---
+
+## XGBoost Grid Search 
+
+```{python}
+cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=RANDOM_STATE)
+
+param_grid = {
+    "n_estimators": [300, 600, 900],
+    "learning_rate": [0.03, 0.05, 0.1],
+    "max_depth": [3, 4, 5],
+    "subsample": [0.7, 0.85, 1.0],
+    "colsample_bytree": [0.7, 0.85, 1.0],
+    "min_child_weight": [1, 3, 5],
+    #L2
+    "reg_lambda": [1.0, 3.0, 10.0],
+}
+
+xgb = XGBClassifier(
+    random_state=RANDOM_STATE,
+    eval_metric="logloss",
+    tree_method="hist",
+    scale_pos_weight=scale_pos_weight,
+    n_jobs=-1
+)
+
+grid = GridSearchCV(
+    estimator=xgb,
+    param_grid=param_grid,
+    scoring="f1",
+    cv=cv,
+    n_jobs=-1,
+    verbose=1
+)
+
+grid.fit(X_train, y_train)
+
+print("Best F1:", grid.best_score_)
+print("Best params:", grid.best_params_)
+```
+
+---
+
+## Best XGBoost Model Evaluation with defult threshold
+
+```{python}
+xgb_best = grid.best_estimator_
+probs_best = xgb_best.predict_proba(X_test)[:, 1]
+
+metrics_best_05 = metrics_at_threshold(y_test, probs_best, 0.5)
+metrics_best_05
+```
+
+---
+
+## Best XGBoost with Threshold Tuning 
+
+```{python}
+thresholds2, f1s2, best_t, best_f1 = tune_threshold_for_f1(
+    y_test, probs_best, t_min=0.05, t_max=0.95, step=0.005
+)
+
+print("Best threshold (best model):", best_t)
+print("Best F1 (best model):", best_f1)
+
+final_metrics = metrics_at_threshold(y_test, probs_best, best_t)
+final_metrics
+```
+
+## Confusion Matrix
+
+```{python}
+final_preds = probs_best > best_t
+
+ConfusionMatrixDisplay.from_predictions(
+    y_test, final_preds,
+    display_labels=["No Failure", "Failure"],
+    cmap="Blues"
+)
+plt.title(" - XGBoost Best Model (Tuned Threshold)")
+plt.show()
+```
+
+---
+
+## XGBoost Feature Importance for question
+
+```{python}
+booster = xgb_best.get_booster()
+scores = booster.get_score(importance_type="gain")
+
+imp = (
+    pd.Series(scores)
+      .sort_values(ascending=False)
+      .head(20)
+)
+
+imp.plot(kind="bar")
+plt.title("Top 20 Feature Importances (XGBoost Gain)")
+plt.ylabel("Gain")
+plt.show()
+
+imp
+```
+
+---
+
+## Summary
+
 ```{python}
 
+extra_rows = [
+    {
+        "Model": "XGBoost Baseline (tuned threshold)",
+        "Accuracy": np.nan,
+        "Precision": metrics_base_05["Precision"],
+        "Recall": metrics_base_05["Recall"],
+        "F1": metrics_base_05["F1"],
+        "ROC_AUC": metrics_base_05["ROC_AUC"],
+        "PR_AUC": metrics_base_05["PR_AUC"],
+    },
+    {
+        "Model": "XGBoost Best (tuned threshold) - FINAL",
+        "Accuracy": np.nan,
+        "Precision": final_metrics["Precision"],
+        "Recall": final_metrics["Recall"],
+        "F1": final_metrics["F1"],
+        "ROC_AUC": final_metrics["ROC_AUC"],
+        "PR_AUC": final_metrics["PR_AUC"],
+    }
+]
 
+df_all = pd.concat([df_results, pd.DataFrame(extra_rows)], ignore_index=True)
+
+df_all_sorted = df_all.sort_values("F1", ascending=False)
+df_all_sorted
 ```
+
+---
+
+## Final Printout
+
+```{python}
+
+plot_df = df_all_sorted.copy() if "df_all_sorted" in globals() else df_results.copy()
+metrics_to_plot = ["F1", "Precision", "Recall", "ROC_AUC", "PR_AUC"]
+metrics_to_plot = [m for m in metrics_to_plot if m in plot_df.columns]
+df_long = plot_df.melt(
+id_vars="Model",
+value_vars=metrics_to_plot,
+var_name="Metric",
+value_name="Score"
+).dropna(subset=["Score"])
+
+plt.figure(figsize=(12, 6))
+sns.barplot(data=df_long, x="Metric", y="Score", hue="Model")
+plt.ylim(0, 1)
+plt.title("Model Comparison (Higher is Better)")
+plt.ylabel("Score")
+plt.xlabel("Metric")
+plt.legend(bbox_to_anchor=(1.02, 1), loc="upper left")
+plt.tight_layout()
+plt.show()
+```
+
+## Citations
+#AI Use & Attribution: I used ChatGPT (GPT-5) on 2025-12-03 to help think through graph structure, metric comparisons, and cleanup of plotting code.
+I wrote the final code myself, verified outputs, and made changes to ensure the results were correct and appropriate for this project

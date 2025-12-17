@@ -1,8 +1,8 @@
 ---
-title: "Project Title"
+title: "Predictive Maintenance"
 subtitle: "INFO 523 - Final Project"
 author: 
-  - name: "Team name - Team member 1, Team member 2,..."
+  - name: "Team 6"
     affiliations:
       - name: "College of Information Science, University of Arizona"
 description: "Project description"
@@ -20,4 +20,30 @@ jupyter: python3
 
 ## Abstract
 
-Add project abstract here.
+Predictive Maintenance Final Project Write-Up
+
+For this final project, I worked with the AI4I 2020 Predictive Maintenance Dataset from the UCI Machine Learning Repository. The dataset contains 10,000 simulated observations related to industrial machines, including sensor readings, machine settings, and failure information. I chose this dataset because it was one of the most complete predictive maintenance datasets I could find, and I liked that it was well put together with all values being present. It has thirteen columns that are as follows UDI,Product ID,Type,Air temperature \[K\],Process temperature \[K\],Rotational speed \[rpm\],Torque \[Nm\],Tool wear \[min\],**Machine failure,**TWF,HDF,PWF,OSF,RNF.
+
+The main motivation behind this project is that machine failures are rare but expensive. If companies can predict failures before they happen, they can reduce downtime, lower repair costs, and improve safety. This makes predictive maintenance a useful real-world problem, and it also turns into an anomaly detection problem, since failures only happen a small percentage of the time. I also liked that with this project it didn’t feel like I was working on a problem that had no meaningful Impact this is something that does happen in the world and I believe with enough data issues like this could be handled differently. If a company wanted to save money, they could fix the problem before things got worse. This problem would allow business to have less down time in repairs and therefore make more money.
+
+I had two main questions going into this project. The first question was: Which sensor features are most strongly associated with machine failures? I wanted to understand whether variables like temperature, torque, rotational speed, and tool wear meaningful indicators of failure were. Twas my intuition, but I had to see it for myself. The second question was: Can machine failures be reliably predicted using machine learning despite the severe class imbalance in the data? Obviously the more data you have the better the outcome will be, so I wanted to challenge myself on a skewed data set.
+
+The dataset includes a mix of numeric features, such as air temperature, process temperature, rotational speed, torque, and tool wear, as well as categorical features, such as machine type and product ID. The target variable is Machine failure, which is binary, where 1 represents a failure and 0 represents normal operation. One thing that became obvious early on is that failures are rare, occurring in only about 3–4% of the observations.
+
+One of the biggest challenges I faced was the severe class imbalance, which is roughly 28 non-failure cases for every failure case. At first, I tried looking at accuracy as a performance metric, but I quickly realized that accuracy was misleading. A model could simply predict no failure every time and still achieve very high accuracy. This forced me to rethink how I evaluated my models and focus instead on F1 score and PR-AUC, which I learned are much better metrics for imbalanced datasets.
+
+Before building models, I spent time cleaning and preparing the data. One major issue I ran into was something called data leakage. At first I thought that my models are preforming amazing but when I look more into some of the models were getting perfect scores. I then realized that the dataset includes several columns like TWF, HDF, PWF, OSF, and RNF, which represent specific failure types. I had included these features in my models, and that is what made my results look so good. My models were performing almost perfectly, which didn’t make sense. After digging deeper, I realized that these columns were basically giving the model information about the failure outcome ahead of time. Removing these leakage features caused performance to drop to more realistic levels. This was my first time having to deal with a problem like this and was a fun problem to solve.
+
+For modeling, I started with several baseline models, including Logistic Regression, K-Nearest Neighbors, Decision Trees, and Support Vector Machines. These models gave me a good reference point for performance and helped me understand how difficult the problem actually was. While some of these models performed reasonably well, they struggled with recall and F1 score due to the class imbalance.
+
+I then moved on to ensemble methods, including Random Forest, Gradient Boosting, and XGBoost. These models generally performed better than the baseline models, especially when it came to handling complex feature interactions. XGBoost was completely new to me for this project, and learning how it worked was one of the biggest learning experiences. I learned that XGBoost builds trees and focuses on correcting mistakes made by previous trees, which makes it especially powerful for my data.
+
+To deal with the class imbalance, I used class weighting in XGBoost by setting the scale_pos_weight parameter. This tells the model to give more importance to the minority class or the 1’s which helped improve recall and F1 score. Another new concept for me was decision threshold tuning. Instead of using the default threshold of 0.5, I tested many different thresholds and chose the one that maximized the F1 score. This had a noticeable impact on performance and helped balance precision and recall more effectively.
+
+I also performed parameter tuning using GridSearchCV to find the best XGBoost configuration. This process took me a while but it helped me understand how parameters like tree depth, learning rate, and number of estimators affect performance. After tuning both the model parameters and the decision threshold, XGBoost clearly outperformed all other models.
+
+The final XGBoost model achieved an F1 score of approximately 0.78, a ROC-AUC of about 0.97, and a PR-AUC of around 0.81. Given the difficulty of predicting rare failures, I was very happy with these results. The model was able to detect failures while keeping false positives at a reasonable level.
+
+To answer my first research question, I looked at feature importance scores from the XGBoost model. The most important features included rotational speed, torque, and tool wear, which matched my expectations. This made sense intuitively, since higher stress and wear on a machine should increase the likelihood of failure. Seeing this alignment between model results and real-world intuition made the results feel more trustworthy.
+
+Overall, this project taught me a lot of new concepts. Learning about data leakage, class imbalance, threshold tuning, and advanced evaluation metrics like PR-AUC were especially valuable. I also gained hands-on experience with XGBoost, which I had never used beforeIn conclusion, this project showed that ensemble methods are effective for rare-event prediction, and that XGBoost combined with proper imbalance handling was the best approach for this dataset. More importantly, it helped me better understand the challenges of real-world machine learning problems and gave me confidence in applying these techniques in future projects.

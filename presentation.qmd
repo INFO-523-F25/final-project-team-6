@@ -1,15 +1,18 @@
 ---
-title: "Project title"
-subtitle: "INFO 523 - Summer 2025 - Final Project"
-author: "Author names"
+title: "Predictive Maintenance"
+subtitle: "INFO 523 - Final Project"
+author: "Todd Daily"
 title-slide-attributes:
-  data-background-image: images/watercolour_sys02_img34_teacup-ocean.jpg
+  data-background-image: images/shutterstock_279641549-1-4.webp
   data-background-size: stretch
-  data-background-opacity: "0.7"
+  data-background-opacity: "0.35"
   data-slide-number: none
 format:
   revealjs:
-    theme:  ['data/customtheming.scss']
+    theme:  moon
+    transition: fade
+    slide-number: true
+    center: false
   
 editor: visual
 jupyter: python3
@@ -17,151 +20,66 @@ execute:
   echo: false
 ---
 
-```{python}
-#| label: load-packages
-#| include: false
+## Motivation
 
-# Load packages here
-import pandas as pd
-import seaborn as sns
+-   Machine failures are rare but costly
+-   Predictive maintenance enables early intervention
+-   This is an anomaly detection problem
+-   Which operational and sensor features are most strongly associated with machine failures?
+-   Can machine failures be reliably predicted despite severe class imbalance?
 
-```
+## Data Overview
 
-```{python}
-#| label: setup
-#| include: false
-#| 
-# Set up plot theme and figure resolution
-sns.set_theme(style="whitegrid")
-sns.set_context("notebook", font_scale=1.1)
+-   AI4I 2020 Predictive Maintenance Dataset (UCI ML Repository)
+-   10,000 simulated industrial observations
+-   Mix of numeric sensor readings and categorical machine information
+-   Binary target: Machine failure
+-   Failure rate ≈ 3–4%
 
-import matplotlib.pyplot as plt
-plt.rcParams['figure.dpi'] = 300
-plt.rcParams['savefig.dpi'] = 300
-plt.rcParams['figure.figsize'] = (6, 6 * 0.618)
-```
+## Key Challenges
 
-```{python}
-#| label: load-data
-#| include: false
-# Load data in Python
-mtcars = sns.load_dataset('mpg').dropna()  # mtcars dataset is similar to the mpg dataset from seaborn
-mtcars['speed'] = mtcars['horsepower'] / mtcars['weight']
+-   Severe class imbalance (\~28:1)
+-   Accuracy is misleading
+-   Focus on F1 and PR-AUC instead
 
-penguins = sns.load_dataset('penguins').dropna()
-```
+![](images/fail_out-2.png)
 
-# Using Quarto for presentations
+## Methods
 
-## Quarto
+**Baseline models** - Logistic Regression - KNN - Decision Tree - SVM
 
--   The presentation is created using the Quarto CLI
+**Ensemble methods** - Random Forest - Gradient Boosting - XGBoost
 
--   `##` sets the start of a new slide
+## Handling Imbalance
 
-## Layouts
+-   Removed leakage features
+-   Used class-weighting in XGBoost
+-   Tuned decision threshold for F1
 
-You can use plain text
+## Model Comparison
 
-::: columns
-::: {.column width="40%"}
--   or bullet points[^1]
-:::
+-   Ensemble methods outperform baselines
+-   XGBoost performs best overall
 
-::: {.column width="60%"}
-or in two columns
-:::
-:::
+![](images/output_plot.png)
 
-[^1]: And add footnotes
+## XGBoost Results
 
--   like
+-   Hyperparameter tuning via GridSearch
+-   Threshold tuning further improved F1
+-   Best balance of precision and recall
 
--   this
+## Final Performance
 
-## Code
+-   F1 ≈ 0.78
+-   ROC-AUC ≈ 0.97
+-   PR-AUC ≈ 0.81
 
-```{python}
-from sklearn.linear_model import LinearRegression
-import statsmodels.api as sm
-import pandas as pd
+![](images/best_matrix.png)
 
-# Fit a linear regression model
-X = mtcars[['speed']]
-y = mtcars['mpg']
-model = LinearRegression().fit(X, y)
+## Conclusion
 
-# Summary of the model
-X2 = sm.add_constant(X)
-est = sm.OLS(y, X2)
-est2 = est.fit()
-print(est2.summary())
-```
-
-## Plots
-
-```{python}
-penguins['species'] = penguins['species'].apply(lambda x: "Adelie" if x == "Adelie" else "Other")
-sns.scatterplot(data=penguins, x='flipper_length_mm', y='body_mass_g', hue='species')
-plt.show()
-```
-
-## Plot and text
-
-::: columns
-::: {.column width="50%"}
--   Some text
-
--   goes here
-:::
-
-::: {.column width="50%"}
-```{python}
-#| warning: false
-#| fig.width: 5.5
-fig, ax = plt.subplots(figsize=(5.5, 5.5 * 0.618))
-sns.boxplot(data=penguins, x='bill_length_mm', y='species', hue='species', ax=ax)
-plt.show()
-```
-:::
-:::
-
-# A new section...
-
-## Tables
-
-If you want to generate a table, make sure it is in the HTML format (instead of Markdown or other formats), e.g.,
-
-```{python}
-penguins.head().to_html()
-```
-
-## Images
-
-![Image credit: Danielle Navarro, Percolate.](images/watercolour_sys02_img34_teacup-ocean.png){fig-align="center" width="500"}
-
-## Math Expressions {.smaller}
-
-You can write LaTeX math expressions inside a pair of dollar signs, e.g. \$\\alpha+\\beta\$ renders $\alpha + \beta$. You can use the display style with double dollar signs:
-
-```         
-$$\bar{X}=\frac{1}{n}\sum_{i=1}^nX_i$$
-```
-
-$$
-\bar{X}=\frac{1}{n}\sum_{i=1}^nX_i
-$$
-
-Limitations:
-
-1.  The source code of a LaTeX math expression must be in one line, unless it is inside a pair of double dollar signs, in which case the starting `$$` must appear in the very beginning of a line, followed immediately by a non-space character, and the ending `$$` must be at the end of a line, led by a non-space character;
-
-2.  There should not be spaces after the opening `$` or before the closing `$`.
-
-# Wrap up
-
-## Feeling adventurous?
-
--   You are welcomed to use the default styling of the slides. In fact, that's what I expect majority of you will do. You will differentiate yourself with the content of your presentation.
-
--   But some of you might want to play around with slide styling. Some solutions for this can be found at https://quarto.org/docs/presentations/revealjs.
+-   Feature importance highlights torque, tool wear, and rotational speed
+-   Final model is suitable as an early-warning system
+-   Ensemble methods are effective for rare-event prediction
+-   XGBoost + imbalance handling was the winning approach ![](images/features.png){width="500" height="300"}
