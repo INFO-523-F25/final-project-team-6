@@ -8,9 +8,3 @@ jupyter: python3
 This project was developed by Team 6 For [INFO 523 - Data Mining and Discovery](https://datamineaz.org/) at the University of Arizona, taught by Dr. Greg Chism. The team is comprised of the following team members.
 
 -   Team member 1: My name is Todd Daily. I am graduating this year. I will be receiving my master's in human language technology.
-
--   Team member 2: One sentence description of Team member 2 (e.g., year, major, etc.).
-
--   Team member 3: One sentence description of Team member 3 (e.g., year, major, etc.).
-
--   Team member 4: One sentence description of Team member 4 (e.g., year, major, etc.).
